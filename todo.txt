@@ -1,0 +1,2 @@
+1. make generic for non-windows OSs
+2. OOP things instead of functional (sorter.Sorter)
