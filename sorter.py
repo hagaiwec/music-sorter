@@ -3,8 +3,9 @@ import os
 import shutil
 import glob
 import subprocess
-subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'eyed3'])
+subprocess.check_call([sys.executable, '-m', 'pip', '-q', 'install', 'eyed3'])
 import eyed3
+import argparse
 from os.path import join
 
 
@@ -21,20 +22,50 @@ INVCHAR_TRANS = str.maketrans({
     })
 
 
-class Sorter(object):
+def get_attr(obj, attr, default):
+    return getattr(obj, attr, "") or ""
+
+
+class AudioFileNavigator(object):
     def __init__(self, rootdir):
         self.rootdir = rootdir
-        self.sorted_path = "{}.sorted".format(self.rootdir)
         self.track_names = filter(
-            Sorter.is_mp3, 
-            glob.iglob(join(self.rootdir, "**"), recursive=True)
-            )
+            self.is_mp3, 
+            glob.iglob(join(self.rootdir, "**"), recursive=True))
 
-    @staticmethod
-    def is_mp3(path):
+    def is_mp3(self, path):
         return True if os.path.splitext(path)[1] == ".mp3" else False
         # TODO - log an indicative message about discarding the non-mp3 file
             # from the sorter and keeping it where it is.
+
+
+class Searcher(AudioFileNavigator):
+    def __init__(self, folder, **kwargs):
+        super(self.__class__, self).__init__(folder)
+        self.fields = kwargs
+
+    def filter_fields(self, track_name):
+        """
+        filter_fields :: str -> bool
+        """
+        sys.stderr = open(os.devnull, "w")
+        track = eyed3.load(track_name)
+        sys.stderr = sys.__stderr__
+        if not track.tag:
+            return False
+        else:
+            return all(map(
+                lambda f: self.fields[f].lower() in get_attr(track.tag, f, "").lower(), 
+                self.fields))
+
+    def search(self):
+        return filter(self.filter_fields, self.track_names)
+
+
+class Sorter(AudioFileNavigator):
+    def __init__(self, rootdir):
+        super(self.__class__, self).__init__(rootdir)
+        self.sorted_path = "{}.sorted".format(self.rootdir)
 
     def validate_titlename(self, title):
         """
@@ -91,14 +122,46 @@ class Sorter(object):
             self.handle_track(track)
 
 
+def sort(args):
+    s = Sorter(args.folder)
+    s.sort()
+
+
+def search(args):
+    args = vars(args)
+    folder = args.pop("folder")
+    fields = {k: args[k][0] for k in args if k != "func" and args[k] != None}
+    s = Searcher(folder, **fields)
+    for song in s.search():
+        print(song)
+
 def main():
-    music_folder = sys.argv[1]
-    if os.path.isdir(music_folder):
-        sorter = Sorter(music_folder)
-        sorter.sort()
-    else:
-        # log an indicative error message
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description=
+        """
+provides actions such as sorting an audio folder or searching for an audio file
+in an audio folder"""
+    )
+    subparser = parser.add_subparsers()
+    parser_sort = subparser.add_parser("sort", help="""
+take a messy, unsorted music folder and sort it by artist and album""")
+    parser_sort.add_argument("folder", help="the folder to be sorted")
+    parser_sort.set_defaults(func=sort)
+
+    parser_search = subparser.add_parser("search", help="""
+search for an audio file by metadata field and its value. default can be 
+searching any metadata field. 
+optional fields are: artist, album, title""")
+    parser_search.add_argument("--artist", nargs=1)
+    parser_search.add_argument("--album", nargs=1)
+    parser_search.add_argument("--title", nargs=1)
+    # parser_search.add_argument("--year", nargs=1)
+    # parser_search.add_argument("--composer", nargs=1)
+    parser_search.add_argument("folder", help="the folder to search in")
+    parser_search.set_defaults(func=search)
+
+    args = parser.parse_args()
+    args.func(args)
+
 
 if __name__ == '__main__':
     main()

@@ -1,7 +1,10 @@
-1. make generic for non-windows OSs
-2. make a logging system
-3. find a way to handle special characters in song title, e.g.: ?, *, /
-4. find a way to handle special characters in song album/artist, e.g.: :, "
+1. make a logging system
+2. find a better way than directing stderr to devnull to suppress eyed3 warning logs.
+
 
 Done:
 -. OOP things instead of functional (sorter.Sorter)
+-. find a way to handle special characters in song title, e.g.: ?, *, / - no way
+-. find a way to handle special characters in song album/artist, e.g.: :, " - no way
+-. make generic for non-windows OSs
+-. implement a search option
