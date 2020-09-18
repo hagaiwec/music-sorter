@@ -72,7 +72,7 @@ class Sorter(AudioFileNavigator):
         Solves problems such as:
             - When certain characters collide with python literals
         """
-        return title.translate(INVCHAR_TRANS)
+        return title.translate(INVCHAR_TRANS) if title else title
 
     def validate_album_artist(self, name):
         """
@@ -81,9 +81,10 @@ class Sorter(AudioFileNavigator):
             - os.mkdir auto-strips spaces. Then when trying to find the dir 
               created, no dir is found.
         """
-        name = name.translate(INVCHAR_TRANS)
-        name = name.strip()
-        return name
+        if name:
+            name = name.translate(INVCHAR_TRANS)
+            name = name.strip()
+            return name
 
     def relocate_track(self, track):
         track_name = os.path.basename(track.path)
